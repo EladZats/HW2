@@ -1,84 +1,49 @@
-#include <stdlib.h>
+#define _POSIX_C_SOURCE 200809L
+#include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#define MAX_GRADE 100
 
-void SortWithHist (int count, int* grades, int* sort_grades);
-int Median (int count, int* grades);
+int main(int argc, char **argv)
+{
+    FILE *in = stdin;
+    unsigned long long counts[101] = {0}, total = 0, line_number = 0;
+    char *line = NULL;
+    size_t capacity = 0;
+    ssize_t length;
 
-int main (int argc, char *argv[]) {
-    int capacity = 100;
-    FILE *file;
-
-    int *grades = malloc(capacity * sizeof(int));
-    if (grades == NULL){
-        return 1;
+    if (argc > 1 && strcmp(argv[1], "-") != 0) {
+        in = fopen(argv[1], "r");
+        if (!in) { perror(argv[1]); return 1; }
     }
-
-    if (argc == 1 || strcmp(argv[1], "-") == 0){
-        file =stdin;
-    }else {
-        file = fopen(argv[1], "r");
-        if (file == NULL){
-            free (grades);
-            return 1;
-        }
-    }
-
-
-    char line[100];
-    int i=0;
-
-    while (fgets(line, sizeof(line), file) != NULL) {
-        if (i >= capacity){
-            int *temp = realloc(grades, capacity * 2 * sizeof(int));
-            if (temp == NULL) {
-                free(grades);
-                return 1;
-            }
-            grades = temp;
-            capacity = capacity * 2;
-        }
+    while ((length = getline(&line, &capacity, in)) != -1) {
         char *end;
-        long grade = strtol(line, &end, 10);
-        if (end == line || (*end != '\n' && *end != '\0') ||
-        grade > 100 || grade < 0)
-        {
-            fprintf (stderr,"Error at line %d: invalid input %s",i+1,line);
+        long value;
+        ++line_number;
+        errno = 0;
+        value = strtol(line, &end, 10);
+        if (end != line) while (*end && isspace((unsigned char)*end)) ++end;
+        if (end == line || *end || errno == ERANGE || value < 0 || value > 100 ||
+            memchr(line, '\0', (size_t)length) != NULL) {
+            fprintf(stderr, "Error at line %llu: invalid input ", line_number);
+            fwrite(line, 1, (size_t)length, stderr);
+            if (length == 0 || line[length - 1] != '\n') fputc('\n', stderr);
+            free(line);
+            if (in != stdin) fclose(in);
             return 1;
         }
-    
-        grades[i++] = (int)grade;
+        ++counts[value];
+        ++total;
     }
-    int* sort_grades = malloc(i * sizeof(int));
-    if (sort_grades == NULL){
-        return 1;
+    free(line);
+    if (ferror(in)) { if (in != stdin) fclose(in); return 1; }
+    if (in != stdin && fclose(in) != 0) return 1;
+    if (!total) return 1;
+    unsigned long long target = total / 2 + total % 2, seen = 0;
+    for (int i = 0; i <= 100; ++i) {
+        seen += counts[i];
+        if (seen >= target) { printf("%d\n", i); return 0; }
     }
-    SortWithHist (i,  grades, sort_grades);
-    fprintf (stdout,"%d",Median (i, sort_grades));
-    free (grades);
-    free(sort_grades);
-    fclose(file);
-    return 0;
-
-}
-
-void SortWithHist (int count, int* grades, int* sort_grades){
-    int hist [101] = {0};
-    for (int i=0; i<count; i++ ){
-        hist[grades[i]] ++;
-    }
-    int j=0;
-    for (int i=0; i<count;){
-        if (hist[j] > 0){
-            sort_grades[i++] = j;
-            hist[j]--;
-        }else if (hist[j] ==0) j++;
-    }
-}
-
-int Median (int count, int* grades){
-    int MedianCount = (count+1)/2;
-    if (MedianCount == 0) return grades[0];
-    return grades[MedianCount-1];
+    return 1;
 }

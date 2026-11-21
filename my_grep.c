@@ -3,73 +3,68 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct {
-    unsigned char ch;
-    int any;
-    int star;
-} Token;
+typedef struct { unsigned char ch; int star; } Token;
 
-int main(int argc, char **argv) {
-    if (argc != 3) return 1;
-    FILE *input = strcmp(argv[1], "-") == 0 ? stdin : fopen(argv[1], "r");
-    if (!input) return 1;
+/* Add every state reachable without consuming a character. */
+static void closure(unsigned char *states, const Token *tokens, size_t count)
+{
+    for (size_t i = 0; i < count; ++i)
+        if (states[i] && tokens[i].star) states[i + 1] = 1;
+}
 
-    const char *p = argv[2];
-    int anchored_start = (*p == '^');
-    if (anchored_start) ++p;
-    size_t plen = strlen(p);
-    int anchored_end = plen > 0 && p[plen - 1] == '$';
-    if (anchored_end) --plen;
-
-    Token *tokens = malloc((plen + 1) * sizeof(*tokens));
-    unsigned char *active = calloc(plen + 1, 1);
-    unsigned char *next = calloc(plen + 1, 1);
-    if (!tokens || !active || !next) {
-        free(tokens); free(active); free(next);
-        if (input != stdin) fclose(input);
-        return 1;
+static int matches(const char *line, size_t length, const Token *tokens,
+                   size_t count, int begin, int end,
+                   unsigned char *current, unsigned char *next)
+{
+    memset(current, 0, count + 1);
+    for (size_t pos = 0;; ++pos) {
+        if (!begin || pos == 0) current[0] = 1;
+        closure(current, tokens, count);
+        if (current[count] && (!end || pos == length)) return 1;
+        if (pos == length) break;
+        memset(next, 0, count + 1);
+        for (size_t i = 0; i < count; ++i) {
+            if (current[i] && (tokens[i].ch == '.' || tokens[i].ch == (unsigned char)line[pos]))
+                next[tokens[i].star ? i : i + 1] = 1;
+        }
+        unsigned char *tmp = current; current = next; next = tmp;
     }
-    size_t count = 0;
-    for (size_t i = 0; i < plen; ++i) {
-        tokens[count].ch = (unsigned char)p[i];
-        tokens[count].any = (p[i] == '.');
-        tokens[count].star = (i + 1 < plen && p[i + 1] == '*');
+    return 0;
+}
+
+int main(int argc, char **argv)
+{
+    FILE *in = stdin;
+    char *line = NULL;
+    size_t capacity = 0, count = 0;
+    ssize_t length;
+    int result = 0;
+    if (argc != 3) return 1;
+    if (strcmp(argv[1], "-") != 0 && !(in = fopen(argv[1], "r"))) return 1;
+    const char *pattern = argv[2];
+    size_t plen = strlen(pattern), first = 0, last = plen;
+    int begin = plen > 0 && pattern[0] == '^';
+    int end = plen > (size_t)begin && pattern[plen - 1] == '$';
+    if (begin) ++first;
+    if (end) --last;
+    Token *tokens = malloc((plen + 1) * sizeof *tokens);
+    unsigned char *current = calloc(plen + 1, 1), *next = calloc(plen + 1, 1);
+    if (!tokens || !current || !next) { result = 1; goto cleanup; }
+    for (size_t i = first; i < last; ++i) {
+        tokens[count].ch = (unsigned char)pattern[i];
+        tokens[count].star = i + 1 < last && pattern[i + 1] == '*';
         if (tokens[count].star) ++i;
         ++count;
     }
-
-    char *line = NULL;
-    size_t capacity = 0;
-    ssize_t length;
-    int error = 0;
-    while ((length = getline(&line, &capacity, input)) >= 0) {
-        size_t n = (size_t)length;
-        if (n && line[n - 1] == '\n') --n;
-        memset(active, 0, count + 1);
-        int matched = 0;
-        for (size_t pos = 0; pos <= n; ++pos) {
-            if (!anchored_start || pos == 0) active[0] = 1;
-            for (size_t j = 0; j < count; ++j)
-                if (active[j] && tokens[j].star) active[j + 1] = 1;
-            if (active[count] && (!anchored_end || pos == n)) {
-                matched = 1;
-                break;
-            }
-            if (pos == n) break;
-            memset(next, 0, count + 1);
-            for (size_t j = 0; j < count; ++j) {
-                if (active[j] && (tokens[j].any || tokens[j].ch == (unsigned char)line[pos]))
-                    next[tokens[j].star ? j : j + 1] = 1;
-            }
-            unsigned char *tmp = active; active = next; next = tmp;
-        }
-        if (matched && fwrite(line, 1, (size_t)length, stdout) != (size_t)length) {
-            error = 1;
-            break;
-        }
+    while ((length = getline(&line, &capacity, in)) != -1) {
+        size_t content = (size_t)length;
+        if (content && line[content - 1] == '\n') --content;
+        if (matches(line, content, tokens, count, begin, end, current, next) &&
+            fwrite(line, 1, (size_t)length, stdout) != (size_t)length) { result = 1; break; }
     }
-    if (ferror(input) || fflush(stdout) == EOF) error = 1;
-    free(line); free(tokens); free(active); free(next);
-    if (input != stdin && fclose(input) == EOF) error = 1;
-    return error ? 1 : 0;
+    if (ferror(in) || fflush(stdout) != 0) result = 1;
+cleanup:
+    free(line); free(tokens); free(current); free(next);
+    if (in != stdin && fclose(in) != 0) result = 1;
+    return result;
 }

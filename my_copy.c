@@ -1,52 +1,36 @@
-#include <stdlib.h>
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
-void PrintErr ();
-int GetPaths(FILE **file_in, FILE **file_out, char *argv[]);
-
-int main (int argc,char *argv[]) {
-    FILE *file_in;
-    FILE *file_out;
-    if (GetPaths(&file_in, &file_out, argv)==1) return 1;
-    int ch;
-    while ((ch = fgetc(file_in)) != EOF) {
-        
-        if (fputc(ch, file_out) == EOF)
-        {
-            PrintErr();
-            return 1;
+int main(int argc, char **argv)
+{
+    FILE *in = stdin, *out = stdout;
+    unsigned char buffer[65536];
+    size_t n;
+    int failed = 0;
+    struct stat source, destination;
+    if (argc != 3) goto error;
+    if (strcmp(argv[1], "-") != 0 && !(in = fopen(argv[1], "rb"))) goto error;
+    if (strcmp(argv[2], "-") != 0) {
+        if (fstat(fileno(in), &source) == 0 && stat(argv[2], &destination) == 0 &&
+            S_ISREG(source.st_mode) && source.st_dev == destination.st_dev && source.st_ino == destination.st_ino) {
+            if (in != stdin && fclose(in) != 0) goto error;
+            return 0;
         }
+        out = fopen(argv[2], "wb");
+        if (!out) { if (in != stdin) fclose(in); goto error; }
     }
-    fclose(file_in);
-    fclose(file_out);
+    while ((n = fread(buffer, 1, sizeof buffer, in)) != 0)
+        if (fwrite(buffer, 1, n, out) != n) { failed = 1; break; }
+    if (ferror(in)) failed = 1;
+    if (in != stdin && fclose(in) != 0) failed = 1;
+    if (out == stdout) { if (fflush(out) != 0) failed = 1; }
+    else if (fclose(out) != 0) failed = 1;
+    if (failed) goto error;
     return 0;
-}
-
-void PrintErr (){
-    fprintf (stderr, "Error occurred");
-    return;
-}
-
-int GetPaths(FILE **file_in, FILE **file_out, char *argv[]){
-    if (strcmp(argv[1], "-") == 0){
-            *file_in =stdin;
-        }else {
-            *file_in = fopen(argv[1], "r");
-            if (*file_in == NULL){
-                PrintErr ();
-                return 1;
-            }
-        }
-    if (strcmp(argv[2], "-") == 0){
-            *file_out =stdout;
-        }else {
-            *file_out = fopen(argv[2], "w");
-            if (*file_out == NULL){
-                PrintErr ();
-                fclose(*file_in);
-                return 1;
-            }
-        }
-    return 0;
+error:
+    fputs("Error occurred\n", stderr);
+    return 1;
 }

@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     char *line = NULL;
     size_t capacity = 0, count = 0;
     ssize_t length;
-    int result = 0;
+    int result = 0, found = 0;
     if (argc != 3) return 1;
     if (strcmp(argv[1], "-") != 0 && !(in = fopen(argv[1], "r"))) return 1;
     const char *pattern = argv[2];
@@ -59,12 +59,14 @@ int main(int argc, char **argv)
     while ((length = getline(&line, &capacity, in)) != -1) {
         size_t content = (size_t)length;
         if (content && line[content - 1] == '\n') --content;
-        if (matches(line, content, tokens, count, begin, end, current, next) &&
-            fwrite(line, 1, (size_t)length, stdout) != (size_t)length) { result = 1; break; }
+        if (matches(line, content, tokens, count, begin, end, current, next)) {
+            found = 1;
+            if (fwrite(line, 1, (size_t)length, stdout) != (size_t)length) { result = 1; break; }
+        }
     }
     if (ferror(in) || fflush(stdout) != 0) result = 1;
 cleanup:
     free(line); free(tokens); free(current); free(next);
     if (in != stdin && fclose(in) != 0) result = 1;
-    return result;
+    return result || !found;
 }

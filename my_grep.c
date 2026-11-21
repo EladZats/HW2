@@ -20,15 +20,17 @@ int main (int argc,char *argv[]) {
     strcpy(pattern, argv[2]);
     char line[MAXLEN];
 
+    int found_match = 0;
     while (fgets(line, sizeof(line), file) != NULL) {
         if (matches(line,pattern)){
+            found_match = 1;
             fprintf (stdout,"%s",line);
             if (line[strlen(line) - 1] != '\n') {
               fprintf(stdout, "\n");
             }
         }
     }
-    return 0;
+    return found_match ? 0 : 1;
 }
 
 int GetPaths(FILE **file, char *argv[]){

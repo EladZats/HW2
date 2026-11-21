@@ -21,6 +21,9 @@ int main (int argc,char *argv[]) {
     while (fgets(line, sizeof(line), file) != NULL) {
         if (matches(line,pattern)){
             fprintf (stdout,"%s",line);
+            if (line[strlen(line) - 1] != '\n') {
+              fprintf(stdout, "\n");
+            }
         }
     }
     return 0;

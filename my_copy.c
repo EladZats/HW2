@@ -24,7 +24,7 @@ int main (int argc,char *argv[]) {
 }
 
 void PrintErr (){
-    fprintf (stderr, "Error occured");
+    fprintf (stderr, "Error occureed");
     return;
 }
 
@@ -34,7 +34,7 @@ int GetPaths(FILE **file_in, FILE **file_out, char *argv[]){
         }else {
             *file_in = fopen(argv[1], "r");
             if (*file_in == NULL){
-                fprintf (stderr, "Error occured");
+                PrintErr ();
                 return 1;
             }
         }
@@ -43,7 +43,7 @@ int GetPaths(FILE **file_in, FILE **file_out, char *argv[]){
         }else {
             *file_out = fopen(argv[2], "w");
             if (*file_out == NULL){
-                fprintf (stderr, "Error occurred");
+                PrintErr ();
                 fclose(*file_in);
                 return 1;
             }

@@ -1,78 +1,95 @@
-#define _POSIX_C_SOURCE 200809L
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
+#define MAXLEN 100
 
-typedef struct { unsigned char ch; int star; } Token;
 
-/* Add every state reachable without consuming a character. */
-static void closure(unsigned char *states, const Token *tokens, size_t count)
-{
-    for (size_t i = 0; i < count; ++i)
-        if (states[i] && tokens[i].star) states[i + 1] = 1;
+int GetPaths(FILE **file, char *argv[]);
+int matches(const char *line, const char *pattern);
+int check_normal_match (const char *line, const char *pattern, int patternlen);
+int match_here(const char *line, const char *pattern);
+
+int main (int argc,char *argv[]) {
+    FILE *file;
+    if (GetPaths(&file, argv)==1) return 1;
+
+    char *pattern = malloc(strlen(argv[2]) + 1);
+    if (pattern == NULL) {
+        return 1;
+    }
+    strcpy(pattern, argv[2]);
+    char line[MAXLEN];
+
+    int found_match = 0;
+    while (fgets(line, sizeof(line), file) != NULL) {
+        if (matches(line,pattern)){
+            found_match = 1;
+            fprintf (stdout,"%s",line);
+            if (line[strlen(line) - 1] != '\n') {
+              fprintf(stdout, "\n");
+            }
+        }
+    }
+    return found_match ? 0 : 1;
 }
 
-static int matches(const char *line, size_t length, const Token *tokens,
-                   size_t count, int begin, int end,
-                   unsigned char *current, unsigned char *next)
-{
-    memset(current, 0, count + 1);
-    for (size_t pos = 0;; ++pos) {
-        if (!begin || pos == 0) current[0] = 1;
-        closure(current, tokens, count);
-        if (current[count] && (!end || pos == length)) return 1;
-        if (pos == length) break;
-        memset(next, 0, count + 1);
-        for (size_t i = 0; i < count; ++i) {
-            if (current[i] && (tokens[i].ch == '.' || tokens[i].ch ==
-                (unsigned char)line[pos]))
-                next[tokens[i].star ? i : i + 1] = 1;
+int GetPaths(FILE **file, char *argv[]){
+    if (strcmp(argv[1], "-") == 0){
+            *file =stdin;
+        }else {
+            *file = fopen(argv[1], "r");
+            if (*file == NULL){
+                return 1;
+            }
         }
-        unsigned char *tmp = current; current = next; next = tmp;
+    return 0;
+}
+
+
+int matches(const char *line, const char *pattern){
+    int patternlen = strlen (pattern);
+        if (pattern[0] =='^'){
+            return match_here(line, pattern + 1);
+        }else{
+            return check_normal_match (line,pattern,patternlen);
+        }
+    return 0;
+}
+
+int check_normal_match (const char *line, const char *pattern, int patternlen){
+    for (int i = 0; i <= strlen(line); i++) {
+        if (match_here(line + i, pattern)) {
+            return 1;
+        }
     }
     return 0;
 }
 
-int main(int argc, char **argv)
-{
-    FILE *in = stdin;
-    char *line = NULL;
-    size_t capacity = 0, count = 0;
-    ssize_t length;
-    int result = 0, found = 0;
-    if (argc != 3) return 1;
-    if (strcmp(argv[1], "-") != 0 && !(in = fopen(argv[1], "r"))) return 1;
-    const char *pattern = argv[2];
-    size_t plen = strlen(pattern), first = 0, last = plen;
-    int begin = plen > 0 && pattern[0] == '^';
-    int end = plen > (size_t)begin && pattern[plen - 1] == '$';
-    if (begin) ++first;
-    if (end) --last;
-    Token *tokens = malloc((plen + 1) * sizeof *tokens);
-    unsigned char *current = calloc(plen + 1, 1), *next = calloc(plen + 1, 1);
-    if (!tokens || !current || !next) { result = 1; goto cleanup; }
-    for (size_t i = first; i < last; ++i) {
-        tokens[count].ch = (unsigned char)pattern[i];
-        tokens[count].star = i + 1 < last && pattern[i + 1] == '*';
-        if (tokens[count].star)
-            while (i + 1 < last && pattern[i + 1] == '*') ++i;
-        ++count;
+int match_here(const char *line, const char *pattern){
+    if (*pattern == '\0') {
+    return 1;
     }
-    while ((length = getline(&line, &capacity, in)) != -1) {
-        size_t content = (size_t)length;
-        if (content && line[content - 1] == '\n') --content;
-        if (matches(line, content, tokens, count, begin, end, current, next)) {
-            found = 1;
-            if (fwrite(line, 1, (size_t)length, stdout) != (size_t)length ||
-                (content == (size_t)length && fputc('\n', stdout) == EOF)) {
-                result = 1;
-                break;
-            }
+
+    if (*pattern == '$' && pattern[1] == '\0') {
+        return *line == '\n' || *line == '\0';
+    }
+
+    if (pattern[1] == '*') {
+        if (match_here(line, pattern + 2)) {
+            return 1;
         }
+        if (*line != '\0' && *line != '\n' &&
+    (*line == *pattern || *pattern == '.')) {
+            return match_here(line + 1, pattern);
+        }
+
+        return 0;
     }
-    if (ferror(in) || fflush(stdout) != 0) result = 1;
-cleanup:
-    free(line); free(tokens); free(current); free(next);
-    if (in != stdin && fclose(in) != 0) result = 1;
-    return result || !found;
+
+    if (*line != '\0' && *line != '\n' &&
+        (*line == *pattern || *pattern == '.')) {
+        return match_here(line + 1, pattern + 1);
+    }
+
+    return 0;
 }

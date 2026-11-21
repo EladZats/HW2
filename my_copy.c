@@ -24,7 +24,7 @@ int main (int argc,char *argv[]) {
 }
 
 void PrintErr (){
-    fprintf (stderr, "Error occureed");
+    fprintf (stderr, "Error occurred");
     return;
 }
 

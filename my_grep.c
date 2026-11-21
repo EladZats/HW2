@@ -15,6 +15,14 @@ int main (int argc,char *argv[]) {
         return 1;
     }
     strcpy(pattern, argv[2]);
+    char line[100];
+
+    while (fgets(line, sizeof(line), file) != NULL) {
+        if (matches(line,pattern)){
+            fprintf (stdout,"%s\n",line);
+        }
+    }
+    return 0;
 }
 
 int GetPaths(FILE **file, char *argv[]){

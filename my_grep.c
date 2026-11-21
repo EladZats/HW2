@@ -4,7 +4,7 @@
 
 int GetPaths(FILE **file, char *argv[]);
 int matches(const char *line, const char *pattern);
-
+int check_normal_match (const char *line, const char *pattern, int patternlen);
 
 int main (int argc,char *argv[]) {
     FILE *file;
@@ -39,12 +39,45 @@ int GetPaths(FILE **file, char *argv[]){
 
 
 int matches(const char *line, const char *pattern){
+    int patternlen = strlen (pattern);
+        if (pattern[0] =='^'){
+            if (patternlen == 1) {
+                return 1;
+            }
+            for (int j = 0; j<= patternlen;){
+                if (pattern [j+1] == '$' && (line[j] == '\0' ||
+                     line[j] == '\n'))
+                {
+                    return 1;
+                }
+                if (line[j] != '\0' && (line[j] == pattern[j+1]|| 
+                    (line[j] != '\n' && pattern[j+1] == '.') )){
+                    j++;
+                if (j == patternlen - 1){
+                    return 1;
+                } 
+                }else{
+                    return 0;
+                }
+            }
+        }else{
+            return check_normal_match (line,pattern,patternlen);
+        }
+    return 0;
+}
+
+int check_normal_match (const char *line, const char *pattern, int patternlen){
     int j =0;
     for (int i = 0; i <= strlen(line); i++){
-        if (line[i+j] != '\0' && line[i+j] == pattern[j]){
+        if (pattern [j] == '$' && (line[i+j] == '\0' || line[i+j] == '\n'))
+        {
+            return 1;
+        }
+        if (line[i+j] != '\0' && (line[i+j] == pattern[j]|| 
+            (line[i+j] != '\n' && pattern[j] == '.') )){
             i--;
             j++;
-            if (j == strlen (pattern)){
+            if (j == patternlen){
                 return 1;
             } 
         }else{

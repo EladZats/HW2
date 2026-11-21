@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#define MAXLEN 100
+
 
 int GetPaths(FILE **file, char *argv[]);
 int matches(const char *line, const char *pattern);
@@ -16,7 +18,7 @@ int main (int argc,char *argv[]) {
         return 1;
     }
     strcpy(pattern, argv[2]);
-    char line[10000];
+    char line[MAXLEN];
 
     while (fgets(line, sizeof(line), file) != NULL) {
         if (matches(line,pattern)){

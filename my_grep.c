@@ -5,6 +5,7 @@
 int GetPaths(FILE **file, char *argv[]);
 int matches(const char *line, const char *pattern);
 int check_normal_match (const char *line, const char *pattern, int patternlen);
+int match_here(const char *line, const char *pattern);
 
 int main (int argc,char *argv[]) {
     FILE *file;
@@ -41,25 +42,7 @@ int GetPaths(FILE **file, char *argv[]){
 int matches(const char *line, const char *pattern){
     int patternlen = strlen (pattern);
         if (pattern[0] =='^'){
-            if (patternlen == 1) {
-                return 1;
-            }
-            for (int j = 0; j<= patternlen;){
-                if (pattern [j+1] == '$' && (line[j] == '\0' ||
-                     line[j] == '\n'))
-                {
-                    return 1;
-                }
-                if (line[j] != '\0' && (line[j] == pattern[j+1]|| 
-                    (line[j] != '\n' && pattern[j+1] == '.') )){
-                    j++;
-                if (j == patternlen - 1){
-                    return 1;
-                } 
-                }else{
-                    return 0;
-                }
-            }
+            return match_here(line, pattern + 1);
         }else{
             return check_normal_match (line,pattern,patternlen);
         }
@@ -67,22 +50,39 @@ int matches(const char *line, const char *pattern){
 }
 
 int check_normal_match (const char *line, const char *pattern, int patternlen){
-    int j =0;
-    for (int i = 0; i <= strlen(line); i++){
-        if (pattern [j] == '$' && (line[i+j] == '\0' || line[i+j] == '\n'))
-        {
+    for (int i = 0; i <= strlen(line); i++) {
+        if (match_here(line + i, pattern)) {
             return 1;
         }
-        if (line[i+j] != '\0' && (line[i+j] == pattern[j]|| 
-            (line[i+j] != '\n' && pattern[j] == '.') )){
-            i--;
-            j++;
-            if (j == patternlen){
-                return 1;
-            } 
-        }else{
-            j=0;
-        }
     }
+    return 0;
+}
+
+int match_here(const char *line, const char *pattern){
+    if (*pattern == '\0') {
+    return 1;
+    }
+
+    if (*pattern == '$' && pattern[1] == '\0') {
+        return *line == '\n' || *line == '\0';
+    }
+
+    if (pattern[1] == '*') {
+        if (match_here(line, pattern + 2)) {
+            return 1;
+        }
+        if (*line != '\0' && *line != '\n' &&
+    (*line == *pattern || *pattern == '.')) {
+            return match_here(line + 1, pattern);
+        }
+
+        return 0;
+    }
+
+    if (*line != '\0' && *line != '\n' &&
+        (*line == *pattern || *pattern == '.')) {
+        return match_here(line + 1, pattern + 1);
+    }
+
     return 0;
 }

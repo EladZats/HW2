@@ -19,7 +19,7 @@ int main (int argc,char *argv[]) {
 
     while (fgets(line, sizeof(line), file) != NULL) {
         if (matches(line,pattern)){
-            fprintf (stdout,"%s\n",line);
+            fprintf (stdout,"%s",line);
         }
     }
     return 0;

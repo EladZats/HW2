@@ -16,7 +16,7 @@ int main (int argc,char *argv[]) {
         return 1;
     }
     strcpy(pattern, argv[2]);
-    char line[1000];
+    char line[10000];
 
     while (fgets(line, sizeof(line), file) != NULL) {
         if (matches(line,pattern)){

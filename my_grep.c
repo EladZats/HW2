@@ -61,7 +61,11 @@ int main(int argc, char **argv)
         if (content && line[content - 1] == '\n') --content;
         if (matches(line, content, tokens, count, begin, end, current, next)) {
             found = 1;
-            if (fwrite(line, 1, (size_t)length, stdout) != (size_t)length) { result = 1; break; }
+            if (fwrite(line, 1, (size_t)length, stdout) != (size_t)length ||
+                (content == (size_t)length && fputc('\n', stdout) == EOF)) {
+                result = 1;
+                break;
+            }
         }
     }
     if (ferror(in) || fflush(stdout) != 0) result = 1;

@@ -79,5 +79,6 @@ void SortWithHist (int count, int* grades, int* sort_grades){
 
 int Median (int count, int* grades){
     int MedianCount = (count+1)/2;
+    if (MedianCount == 0) return grades[0];
     return grades[MedianCount-1];
 }

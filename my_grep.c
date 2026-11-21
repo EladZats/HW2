@@ -24,7 +24,8 @@ static int matches(const char *line, size_t length, const Token *tokens,
         if (pos == length) break;
         memset(next, 0, count + 1);
         for (size_t i = 0; i < count; ++i) {
-            if (current[i] && (tokens[i].ch == '.' || tokens[i].ch == (unsigned char)line[pos]))
+            if (current[i] && (tokens[i].ch == '.' || tokens[i].ch ==
+                (unsigned char)line[pos]))
                 next[tokens[i].star ? i : i + 1] = 1;
         }
         unsigned char *tmp = current; current = next; next = tmp;
@@ -53,7 +54,8 @@ int main(int argc, char **argv)
     for (size_t i = first; i < last; ++i) {
         tokens[count].ch = (unsigned char)pattern[i];
         tokens[count].star = i + 1 < last && pattern[i + 1] == '*';
-        if (tokens[count].star) ++i;
+        if (tokens[count].star)
+            while (i + 1 < last && pattern[i + 1] == '*') ++i;
         ++count;
     }
     while ((length = getline(&line, &capacity, in)) != -1) {

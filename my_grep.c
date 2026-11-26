@@ -30,7 +30,7 @@ int main (int argc,char *argv[]) {
             }
         }
     }
-    return found_match ? 0 : 1;
+    return 0;
 }
 
 int GetPaths(FILE **file, char *argv[]){

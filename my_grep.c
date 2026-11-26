@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#define MAXLEN 100
+#define MAXLEN 1024
 
 
 int GetPaths(FILE **file, char *argv[]);

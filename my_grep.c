@@ -39,6 +39,7 @@ int GetPaths(FILE **file, char *argv[]){
         }else {
             *file = fopen(argv[1], "r");
             if (*file == NULL){
+                fprintf(stderr, "Error occurred\n");
                 return 1;
             }
         }
